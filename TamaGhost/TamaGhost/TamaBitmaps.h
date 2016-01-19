@@ -1,0 +1,31 @@
+//
+//  TamaBitmaps.h
+//  TamaGhost
+//
+//  Created by Alexandra Olivier on 1/16/16.
+//  Copyright (c) 2016 Alexandra Olivier. All rights reserved.
+//
+
+#pragma once
+
+static const unsigned char PROGMEM m_body[] =
+{   B11111101, B11111111, B11110000,
+    B00011111, B00000000, B00001111,
+    B00000000, B00000111, B00000000,
+    B00000111, B00000000, B00000011,
+    B00000000, B00000001, B00000000,
+    B00110001;
+
+};
+
+static const unsigned char PROGMEM m_head[] =
+
+{
+    B11111100, B00000011, B11111000,
+    B00000011, B11100000, B00000111,
+    B11000000, B00001111, B10011000,
+    B00000000, B00111000, B00000000,
+    B00000000, B00101100, B00000000,
+    B11111000, B00000001, B00000000,
+    B00000111, B00000000, B001110000
+};
