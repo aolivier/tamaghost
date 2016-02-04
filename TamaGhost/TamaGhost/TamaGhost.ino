@@ -76,10 +76,6 @@ int x_sign = 1;
 
 unsigned long prevMillis;
 
-int fadeIncrement = 2;
-int fadeCount = 255;
-bool fadeMonster = false;
-
 int currentGhostType = 0;
 float ghostTypeTimer = 0;
 int ghostTypeInterval = 30 * 1000;
@@ -92,7 +88,7 @@ float rainTimer = 0;
 bool inRain = false;
 
 float noRainTimer = 0;
-float noRainDuration = 60;
+float noRainDuration = 60 * 1000;
 
 
 int transitionCycles = 31;
@@ -506,6 +502,8 @@ void stopRain(){
 
 void changeGhost(){
     
+    Serial.println("Changing ghost");
+    
     ghostTypeTimer = 0;
     ghostTypeInterval = random(60,90) * 1000;
     
@@ -517,13 +515,17 @@ void changeGhost(){
 
 void startTransition(){
     
+    Serial.println("Start transition");
+    
     inTransition = true;
     transitionDirection = 1;
+    transitionCounter = 0;
 
 }
 
 void stopTransition(){
     
+    Serial.println("Stop transition");
     
     inTransition = false;
     transitionCounter = 0;
@@ -531,9 +533,23 @@ void stopTransition(){
     
 }
 
+void drawGradient( int numLines ){
+    
+    uint16_t val = matrix.Color333(7,7,7);
+    
+    for (int i = 0; i < numLines; i++){
+        
+        matrix.drawFastHLine(0, i, 64, val);
+        
+    }
+}
+
+
 void updateTransition(){
     
     if ( transitionCounter > transitionCycles){
+        
+        Serial.println("Transition counter is bigger, switch direction");
         
         transitionCounter = transitionCycles;
         transitionDirection = -1;
@@ -547,12 +563,16 @@ void updateTransition(){
     }else if (transitionCounter < 0){
         
         // DONE, change monster
-        stopTransition();
+        if (inTransition){
+            stopTransition();
+        }
         
     }else{
     
         // Draw sunset with counter number of lines
         drawGradient( transitionCounter + 1);
+        
+        
         
     }
 
@@ -565,15 +585,15 @@ void updateTimers(){
     float dt = curMillis - prevMillis;
     
     // Update each timer
-    ghostTypeTimer += dt;
-    
-    if (ghostTypeTimer >= ghostTypeInterval){
-        startTransition();
+    if (!inTransition){
+        ghostTypeTimer += dt;
     }
     
-    if (inTransition){
-        transitionCounter++;
-        updateTransition();
+    if (ghostTypeTimer >= ghostTypeInterval){
+        if (!inTransition){
+            startTransition();
+        }
+        
     }
     
     if (inRain){
@@ -597,8 +617,6 @@ void updateTimers(){
     // At end
     prevMillis = curMillis;
 }
-
-
 
 void drawMonster(int type, int red, int green, int blue){
     
@@ -643,25 +661,9 @@ void drawMonster(int type, int red, int green, int blue){
 
 void loop() {
     
-    matrix.fillScreen(matrix.Color333(0,0,0));
-    
-    // Perlin test.
-    
     unsigned long curTime = millis();
     
-    uint8_t seconds = int(curTime / 1000.0f);
-    uint8_t remainder = 255*((curTime - seconds*1000) / 1000.0f);
-    
-    uint16_t noiseGen = seconds;
-    noiseGen = noiseGen << 8;
-    noiseGen += remainder;
-    
-    // Update position using noise
-    float xn = inoise8( curX, noiseGen );
-    float yn = inoise8( curY, noiseGen );
-    
-    long remapX = map(xn, 0.0, 255.0, 0.0, 2.0);
-    long remapY = map(yn, 0.0, 255.0, 2.0, 4.0);
+    matrix.fillScreen(matrix.Color333(0,0,0));
     
     // Increment position
     position p = {
@@ -707,6 +709,11 @@ void loop() {
         y_sign = -1;
     }
 
+    if (inTransition){
+        transitionCounter += transitionDirection;
+        updateTransition();
+    }
+    
     matrix.swapBuffers(true);
 
 }
