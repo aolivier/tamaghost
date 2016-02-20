@@ -78,7 +78,7 @@ unsigned long prevMillis;
 
 int currentGhostType = 0;
 float ghostTypeTimer = 0;
-int ghostTypeInterval = 30 * 1000;
+float ghostTypeInterval = 30 * 1000;
 
 int currentRainType = 0;
 int currentRainMode = 0;
@@ -104,6 +104,10 @@ struct position {
 
 QueueArray <position> ghostPositions;
 QueueArray<position> rainPositions;
+
+uint16_t gradientColors[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+bool madeGradient = false;
 
 int ghostCounter = 0;
 
@@ -269,7 +273,7 @@ void drawCross(int x, int y, uint16_t color = matrix.Color333(6,3,3)){
 
 void drawPoop(int x, int y, uint16_t color = matrix.Color333(3,7,3)){
     
-    matrix.drawBitmap( x, y, heart, 16, 16, color);
+    matrix.drawBitmap( x, y, poop, 16, 16, color);
 }
 
 void drawRain(int x, int y, int type, uint16_t color){
@@ -403,7 +407,7 @@ void selectRainColor(){
         // pink
         }else if (_rand <= 6){
             
-            currentRainColor = matrix.Color333(7, 4, 4);
+            currentRainColor = matrix.Color333(7, 2, 2);
             
         // multi
         }else{
@@ -420,12 +424,12 @@ void selectRainColor(){
         // pink
         if (_rand <= 2){
             
-            currentRainColor = matrix.Color333(7, 4, 4);
+            currentRainColor = matrix.Color333(7, 2, 2);
             
         // blue
         }else if (_rand <= 5){
             
-            currentRainColor = matrix.Color333(4, 4, 7);
+            currentRainColor = matrix.Color333(2, 2, 7);
             
         // white
         }else if (_rand <= 7){
@@ -440,7 +444,7 @@ void selectRainColor(){
     }else if (type == 4){
         
         // green red
-        currentRainColor = matrix.Color333(3,7,3);
+        currentRainColor = matrix.Color333(4,7,3);
 
     }
 }
@@ -458,9 +462,52 @@ void startRain(){
     currentRainType = (int) floor(random(0,5));
     selectRainColor();
     
+}
+
+void drawBox(int numLines){
     
-    Serial.println("rain: " + currentRainType);
+    for (int i = 0; i < numLines; i++){
+        
+        matrix.drawFastHLine(0, i, 64, matrix.Color888( 255,255,255));
+        
+    }
     
+}
+
+void drawGradient( int numLines ){
+    
+    
+    float r1 = 0.0f;
+    float g1 = 200.0f;
+    float b1 = 255.0f;
+    
+    float r2 = 0.0f;
+    float g2 = 0.0f;
+    float b2 = 0.0f;
+    
+    
+    for (int i = 0; i < numLines; i++){
+        
+        if (!madeGradient){
+
+            float p1 = (float)(numLines - i) / ((float) numLines);;
+            float p2 = 1.0f - p1;
+            
+            uint8_t rv = (float) p1 * r1 + (float) p2 * r2;
+            uint8_t gv = (float) p1 * g1 + (float) p2 * g2;
+            uint8_t bv = (float) p1 * b1 + (float) p2 * b2;
+            
+            uint16_t val = matrix.Color888( rv,gv,bv);
+            
+            gradientColors[i] = val;
+            
+        }
+        
+        matrix.drawFastHLine(0, i, 64, gradientColors[i]);
+     
+    }
+    
+    madeGradient = true;
 }
 
 void setup() {
@@ -476,15 +523,14 @@ void setup() {
 
     // fill the screen with 'black'
     matrix.fillScreen(matrix.Color333(0, 0, 0));
+    
+//    drawGradient(32);
+    
     delay(500);
 
-    Serial.begin(9600);
-    Serial.println("hello color");
-
     // Choose random duration
-    
+
     startRain();
-    
 
 }
 
@@ -502,21 +548,18 @@ void stopRain(){
 
 void changeGhost(){
     
-    Serial.println("Changing ghost");
-    
     ghostTypeTimer = 0;
     ghostTypeInterval = random(60,90) * 1000;
-    
+
     // Change current monster
-    currentGhostType = (int) floor(random(0,4));
+    currentGhostType = (int) floor(random(0,3));
     
 }
 
 
 void startTransition(){
     
-    Serial.println("Start transition");
-    
+    ghostTypeTimer = 0.0f;
     inTransition = true;
     transitionDirection = 1;
     transitionCounter = 0;
@@ -524,32 +567,20 @@ void startTransition(){
 }
 
 void stopTransition(){
-    
-    Serial.println("Stop transition");
-    
+
+    ghostTypeTimer = 0.0f;
     inTransition = false;
     transitionCounter = 0;
     transitionDirection = 1;
     
 }
 
-void drawGradient( int numLines ){
-    
-    uint16_t val = matrix.Color333(7,7,7);
-    
-    for (int i = 0; i < numLines; i++){
-        
-        matrix.drawFastHLine(0, i, 64, val);
-        
-    }
-}
+
 
 
 void updateTransition(){
     
     if ( transitionCounter > transitionCycles){
-        
-        Serial.println("Transition counter is bigger, switch direction");
         
         transitionCounter = transitionCycles;
         transitionDirection = -1;
@@ -557,7 +588,7 @@ void updateTransition(){
         changeGhost();
         
         // Draw sunset with counter number of lines
-        drawGradient( transitionCounter + 1);
+        drawBox( transitionCounter + 1);
 
         
     }else if (transitionCounter < 0){
@@ -570,7 +601,7 @@ void updateTransition(){
     }else{
     
         // Draw sunset with counter number of lines
-        drawGradient( transitionCounter + 1);
+        drawBox( transitionCounter + 1);
         
         
         
@@ -579,6 +610,7 @@ void updateTransition(){
 }
 
 void updateTimers(){
+    
     
     // Calculate delta time for this frame
     unsigned long curMillis = millis();
@@ -590,7 +622,7 @@ void updateTimers(){
     }
     
     if (ghostTypeTimer >= ghostTypeInterval){
-        if (!inTransition){
+        if (!inTransition && !inRain ){
             startTransition();
         }
         
@@ -655,14 +687,36 @@ void drawMonster(int type, int red, int green, int blue){
         }
         
     }else{
-        drawCloud(20,0,30, 200.0, 150.0f,255.0f);
+        if (x_sign < 0){
+            
+            matrix.drawBitmap(curX, curY, m_a, 32,32, val) ;
+            matrix.drawFastHLine(curX + 5, 30, 15, val);
+            
+        }else{
+            
+            matrix.drawBitmap(curX, curY, m_a_r, 32,32, val) ;
+            matrix.drawFastHLine(curX + 7, 30, 15, val);
+        }
     }
 }
 
 void loop() {
     
+
     unsigned long curTime = millis();
     
+    uint8_t seconds = int(curTime / 1000.0f);
+    uint8_t remainder = 255*((curTime - seconds*1000) / 1000.0f);
+    
+    uint16_t noiseGen = seconds;
+    noiseGen = noiseGen << 8;
+    noiseGen += remainder;
+    
+    // Update position using noise
+    float xn = inoise8( curX, noiseGen );
+    
+    long remapX = map(xn, 0.0, 255.0, 0.0, 2.0);
+
     matrix.fillScreen(matrix.Color333(0,0,0));
     
     // Increment position
